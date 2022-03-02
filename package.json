@@ -25,10 +25,7 @@
     "access": "public"
   },
   "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "CHANGELOG.md"
+    "dist"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -1,4 +1,4 @@
-# Typefetcher
+# Typefetcher [![npm version](https://badge.fury.io/js/@tknf%2Ftypefetcher.svg)](https://badge.fury.io/js/@tknf%2Ftypefetcher)
 
 This library provides a TypeScript-first and very simple wrapper around Axios.
 

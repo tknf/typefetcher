@@ -1,0 +1,7 @@
+{
+  "extends": "@tknf/eslint-config-typescript/node-config",
+  "rules": {
+    "linebreak-style": "off",
+    "no-undef": "off"
+  }
+}

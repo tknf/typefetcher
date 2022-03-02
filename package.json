@@ -1,0 +1,52 @@
+{
+  "name": "@tknf/typefetcher",
+  "version": "0.1.0",
+  "author": "Tasuku Kuribayashi <kuribayashi@tknf.net>",
+  "repository": {
+    "url": "https://github.com/tknf/typefetcher"
+  },
+  "license": "MIT",
+  "private": false,
+  "homepage": "https://github.com/tknf/typefetcher",
+  "keywords": [
+    "fetch",
+    "http",
+    "https",
+    "ajax",
+    "api",
+    "async",
+    "axios",
+    "promise",
+    "xhr",
+    "xmlhttprequest"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist",
+    "test": "jest",
+    "dev": "yarn build --preserveWatchOutput -w",
+    "build": "tsc -p ."
+  },
+  "devDependencies": {
+    "@tknf/eslint-config-typescript": "^1.0.5",
+    "@tknf/prettier-config": "^1.0.5",
+    "@types/jest": "^27.4.1",
+    "jest": "^27.5.1",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^27.1.3",
+    "ts-node": "^10.6.0",
+    "typescript": "^4.6.2"
+  },
+  "dependencies": {
+    "axios": "^0.26.0",
+    "node-fetch": "^3.2.1"
+  },
+  "prettier": "@tknf/prettier-config"
+}

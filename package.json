@@ -1,6 +1,6 @@
 {
   "name": "@tknf/typefetcher",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "TypeScript-first and very simple wrapper of Axios.",
   "author": "Tasuku Kuribayashi <kuribayashi@tknf.net>",
   "repository": {

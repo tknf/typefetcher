@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/tknf/snowflake/main/docs/snowflake.png" alt="Snowflake Logo" width="250" height="auto">
+  <img src="https://raw.githubusercontent.com/tknf/typefetcher/main/docs/typefetcher.png" alt="TypeFetcher Logo" width="250" height="auto">
   <h1>@tknf/typefetcher</h1>
   <p>TypeScript-first API client with <a href="https://standardschema.dev">Standard Schema</a> support, providing excellent DX and strict type safety.</p>
 </div>

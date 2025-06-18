@@ -1,36 +1,37 @@
 import type { StandardSchemaV1, InferInput, InferOutput } from "./schema";
 
 /**
- * HTTPメソッド
+ * Supported HTTP methods for API requests
  */
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /**
- * パスパラメータを抽出する型
+ * Extract path parameters from URL template
  * "/users/{id}" -> { id: string }
  */
 export type ExtractPathParams<T extends string> =
 	T extends `${infer _Start}{${infer Param}}${infer Rest}`
 		? { [K in Param]: string } & ExtractPathParams<Rest>
-		: {};
+		: Record<string, never>;
 
 /**
- * エンドポイントのスキーマ定義
+ * Schema definition for endpoint validation
+ * Defines validation schemas for different parts of the request/response
  */
 export interface EndpointSchema {
-	readonly pathParams?: StandardSchemaV1;
+	readonly params?: StandardSchemaV1;
 	readonly query?: StandardSchemaV1;
 	readonly body?: StandardSchemaV1;
 	readonly response?: StandardSchemaV1;
 }
 
 /**
- * エンドポイント定義
+ * Complete endpoint definition including method, path, and optional schema
  */
 export interface EndpointDefinition<
 	Method extends HttpMethod = HttpMethod,
 	Path extends string = string,
-	Schema extends EndpointSchema = EndpointSchema,
+	Schema extends EndpointSchema | undefined = EndpointSchema | undefined,
 > {
 	readonly method: Method;
 	readonly path: Path;
@@ -38,44 +39,47 @@ export interface EndpointDefinition<
 }
 
 /**
- * エンドポイントマップ
- * "GET /users/{id}" -> EndpointDefinition
+ * Map of endpoint keys to their definitions
+ * Key format: "METHOD /path" -> EndpointDefinition
  */
 export type EndpointMap = Record<string, EndpointDefinition>;
 
 /**
- * リクエストオプション
+ * Request options with conditional typing based on schema
+ * Parameters become required when schema is provided
  */
-export interface RequestOptions<Schema extends EndpointSchema> {
-	readonly pathParams?: Schema["pathParams"] extends StandardSchemaV1
-		? InferInput<Schema["pathParams"]>
-		: Record<string, string>;
-	readonly query?: Schema["query"] extends StandardSchemaV1 
-		? InferInput<Schema["query"]> 
-		: Record<string, string>;
-	readonly body?: Schema["body"] extends StandardSchemaV1 
-		? InferInput<Schema["body"]> 
-		: unknown;
+export type RequestOptions<Schema extends EndpointSchema> = {
 	readonly headers?: Record<string, string>;
-}
+	readonly signal?: AbortSignal;
+} & (Schema["params"] extends StandardSchemaV1
+	? { readonly params: InferInput<Schema["params"]> }
+	: { readonly params?: Record<string, string> }) &
+	(Schema["query"] extends StandardSchemaV1
+		? { readonly query: InferInput<Schema["query"]> }
+		: { readonly query?: Record<string, string> }) &
+	(Schema["body"] extends StandardSchemaV1
+		? { readonly body: InferInput<Schema["body"]> }
+		: { readonly body?: unknown });
 
 /**
- * レスポンス型
+ * Response type inferred from schema or unknown if no schema provided
  */
 export type ResponseType<Schema extends EndpointSchema> =
 	Schema["response"] extends StandardSchemaV1 ? InferOutput<Schema["response"]> : unknown;
 
 /**
- * TypeFetcherの設定
+ * Configuration options for TypeFetcher client
  */
 export interface TypeFetcherConfig {
 	readonly baseURL?: string;
 	readonly headers?: Record<string, string>;
 	readonly timeout?: number;
+	readonly fetch?: typeof globalThis.fetch;
 }
 
 /**
- * リクエストエラー
+ * HTTP error thrown when request fails
+ * Contains status code, status text, and optional response data
  */
 export class TypeFetcherError extends Error {
 	constructor(
@@ -90,7 +94,8 @@ export class TypeFetcherError extends Error {
 }
 
 /**
- * バリデーションエラー
+ * Schema validation error with detailed issue information
+ * Contains validation issues with messages and optional paths
  */
 export class ValidationError extends Error {
 	constructor(

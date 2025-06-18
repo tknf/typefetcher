@@ -1,20 +1,18 @@
 /**
- * TypeFetcher基本的な使用例
+ * TypeFetcher Basic Usage Examples
  *
- * このファイルはTypeFetcherの基本的な使い方を示すサンプルです。
- * 実際のプロジェクトでは、Zodなどのスキーマライブラリと組み合わせて使用します。
+ * This file demonstrates basic usage patterns for TypeFetcher.
+ * Zod 3.25.0+ / Valibot 1.0+ are Standard Schema compliant, so they can be used directly.
  */
 
-import { TypeFetcher, createStandardSchemaFromZod } from "../dist";
-
-// Zodがインストールされている場合の例（実際にはimportする）
-declare const z: any;
+import { TypeFetcher, TypeFetcherError, ValidationError } from "../dist";
+import { z } from "zod"
 
 /**
- * 基本的な使用例（スキーマなし）
+ * Basic usage example (no schema validation)
  */
 function basicExample() {
-	// クライアントを作成
+	// Create client instance
 	const client = new TypeFetcher({
 		baseURL: "https://jsonplaceholder.typicode.com",
 		headers: {
@@ -22,7 +20,7 @@ function basicExample() {
 		},
 	});
 
-	// エンドポイントを登録
+	// Register endpoints
 	const api = client
 		.addEndpoint("GET", "/users")
 		.addEndpoint("GET", "/users/{id}")
@@ -30,7 +28,7 @@ function basicExample() {
 		.addEndpoint("PUT", "/users/{id}")
 		.addEndpoint("DELETE", "/users/{id}");
 
-	// Octokitライクな呼び出し
+	// Octokit-style API methods
 	return {
 		async getUsers() {
 			// TypeScript: Promise<unknown>
@@ -38,9 +36,9 @@ function basicExample() {
 		},
 
 		async getUser(id: string) {
-			// パスパラメータを渡す
+			// Pass path parameters
 			return await api.request("GET /users/{id}", {
-				pathParams: { id },
+				params: { id },
 			});
 		},
 
@@ -52,24 +50,24 @@ function basicExample() {
 
 		async updateUser(id: string, userData: any) {
 			return await api.request("PUT /users/{id}", {
-				pathParams: { id },
+				params: { id },
 				body: userData,
 			});
 		},
 
 		async deleteUser(id: string) {
 			return await api.request("DELETE /users/{id}", {
-				pathParams: { id },
+				params: { id },
 			});
 		},
 	};
 }
 
 /**
- * スキーマ付きの型安全な使用例
+ * Type-safe usage example with schema validation
  */
 function typeSafeExample() {
-	// Zodスキーマを定義（実際のプロジェクトでzodを使用）
+	// Define Zod schemas (Zod 3.25.0+ is Standard Schema compliant)
 	const UserSchema = z.object({
 		id: z.number(),
 		name: z.string(),
@@ -87,55 +85,55 @@ function typeSafeExample() {
 		id: z.string(),
 	});
 
-	// クライアントを作成
+	// Create client instance
 	const client = new TypeFetcher({
 		baseURL: "https://jsonplaceholder.typicode.com",
 	});
 
-	// スキーマ付きでエンドポイントを登録
+	// Register endpoints with schema validation
 	const api = client
 		.addEndpoint("GET", "/users", {
-			response: createStandardSchemaFromZod(z.array(UserSchema)),
+			response: z.array(UserSchema),
 		})
 		.addEndpoint("GET", "/users/{id}", {
-			pathParams: createStandardSchemaFromZod(PathIdSchema),
-			response: createStandardSchemaFromZod(UserSchema),
+			pathParams: PathIdSchema,
+			response: UserSchema,
 		})
 		.addEndpoint("POST", "/users", {
-			body: createStandardSchemaFromZod(CreateUserSchema),
-			response: createStandardSchemaFromZod(UserSchema),
+			body: CreateUserSchema,
+			response: UserSchema,
 		})
 		.addEndpoint("PUT", "/users/{id}", {
-			pathParams: createStandardSchemaFromZod(PathIdSchema),
-			body: createStandardSchemaFromZod(CreateUserSchema),
-			response: createStandardSchemaFromZod(UserSchema),
+			pathParams: PathIdSchema,
+			body: CreateUserSchema,
+			response: UserSchema,
 		});
 
 	return {
 		async getUsers() {
 			// TypeScript: Promise<{ id: number; name: string; email: string; username: string; }[]>
-			// 実行時にレスポンスが検証される
+			// Response is validated at runtime
 			return await api.request("GET /users");
 		},
 
 		async getUser(id: string) {
-			// pathParamsが型チェック・実行時検証される
+			// params are type-checked and validated at runtime
 			// TypeScript: Promise<{ id: number; name: string; email: string; username: string; }>
 			return await api.request("GET /users/{id}", {
-				pathParams: { id }, // string型が期待される
+				params: { id }
 			});
 		},
 
 		async createUser(userData: { name: string; email: string; username: string }) {
-			// bodyが型チェック・実行時検証される
+			// body is type-checked and validated at runtime
 			return await api.request("POST /users", {
-				body: userData, // CreateUserSchemaの型が期待される
+				body: userData, // Expects CreateUserSchema type
 			});
 		},
 
 		async updateUser(id: string, userData: { name: string; email: string; username: string }) {
 			return await api.request("PUT /users/{id}", {
-				pathParams: { id },
+				params: { id },
 				body: userData,
 			});
 		},
@@ -143,7 +141,7 @@ function typeSafeExample() {
 }
 
 /**
- * エラーハンドリングの例
+ * Error handling example
  */
 async function errorHandlingExample() {
 	const client = new TypeFetcher({
@@ -154,24 +152,24 @@ async function errorHandlingExample() {
 
 	try {
 		const user = await api.request("GET /users/{id}", {
-			pathParams: { id: "123" },
+			params: { id: "123" },
 		});
 		console.log(user);
 	} catch (error) {
 		if (error instanceof TypeFetcherError) {
-			// HTTPエラー（404, 500など）
+			// HTTP errors (404, 500, etc.)
 			console.error(`HTTP Error: ${error.status} ${error.statusText}`);
 			console.error("Response data:", error.data);
 		} else if (error instanceof ValidationError) {
-			// スキーマ検証エラー
+			// Schema validation errors
 			console.error("Validation Error:", error.message);
 			console.error("Issues:", error.issues);
 		} else {
-			// その他のエラー
+			// Other errors
 			console.error("Unexpected error:", error);
 		}
 	}
 }
 
-// 使用例のエクスポート
+// Export usage examples
 export { basicExample, typeSafeExample, errorHandlingExample };

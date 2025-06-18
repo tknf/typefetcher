@@ -40,7 +40,7 @@ function valibotDirectExample() {
 			response: v.array(UserSchema),
 		})
 		.addEndpoint("GET", "/users/{id}", {
-			pathParams: PathIdSchema,
+			params: PathIdSchema,
 			response: UserSchema,
 		})
 		.addEndpoint("POST", "/users", {
@@ -48,37 +48,50 @@ function valibotDirectExample() {
 			response: UserSchema,
 		})
 		.addEndpoint("PUT", "/users/{id}", {
-			pathParams: PathIdSchema,
+			params: PathIdSchema,
 			body: CreateUserSchema,
 			response: UserSchema,
 		});
 
 	return {
 		async getUsers() {
-			// TypeScript: Promise<{ id: number; name: string; email: string; username: string; }[]>
-			return await api.request("GET /users");
+			// TypeScript: Promise<StructuredResponse<User[]>>
+			const response = await api.request("GET /users");
+			return response.data; // Return just the users array
 		},
 
 		async getUser(id: string) {
 			// params are type-checked and validated at runtime
-			// TypeScript: Promise<{ id: number; name: string; email: string; username: string; }>
-			return await api.request("GET /users/{id}", {
+			// TypeScript: Promise<StructuredResponse<User>>
+			const response = await api.request("GET /users/{id}", {
 				params: { id }
 			});
+			return response.data; // Return just the user object
 		},
 
 		async createUser(userData: { name: string; email: string; username: string }) {
 			// body is type-checked and validated at runtime
-			return await api.request("POST /users", {
+			const response = await api.request("POST /users", {
 				body: userData,
 			});
+			
+			console.log("Created user with status:", response.status);
+			console.log("Location header:", response.headers.get("location"));
+			
+			return response.data;
 		},
 
 		async updateUser(id: string, userData: { name: string; email: string; username: string }) {
-			return await api.request("PUT /users/{id}", {
+			const response = await api.request("PUT /users/{id}", {
 				params: { id },
 				body: userData,
 			});
+			
+			return {
+				user: response.data,
+				status: response.status,
+				lastModified: response.headers.get("last-modified")
+			};
 		},
 	};
 }

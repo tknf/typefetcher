@@ -36,11 +36,12 @@ async function abortSignalExample() {
 	}, 1000);
 
 	try {
-		const post = await api.request("GET /posts/{id}", {
+		const response = await api.request("GET /posts/{id}", {
 			params: { id: "1" },
 			signal: controller.signal, // Pass the abort signal
 		});
-		console.log("Post received:", post);
+		console.log("Post received:", response.data);
+		console.log("Response status:", response.status);
 	} catch (error) {
 		if (error instanceof Error && error.name === "AbortError") {
 			console.log("Request was cancelled");
@@ -69,30 +70,30 @@ async function rawResponseExample() {
 	});
 
 	try {
-		// Use regular request method - it now includes ~raw property
-		const result = await api.request("GET /posts/{id}", {
+		// Use regular request method - it now returns structured response
+		const response = await api.request("GET /posts/{id}", {
 			params: { id: "1" },
 		});
 
 		// Access parsed, validated data directly
-		console.log("Post ID:", result.id);
-		console.log("Post title:", result.title);
+		console.log("Post ID:", response.data.id);
+		console.log("Post title:", response.data.title);
 
-		// Access raw response metadata through ~raw property
-		console.log("Response status:", result["~raw"].status);
+		// Access response metadata directly
+		console.log("Response status:", response.status);
+		console.log("Response URL:", response.url);
 		console.log("Response headers:");
-		for (const [key, value] of result["~raw"].headers.entries()) {
+		for (const [key, value] of response.headers.entries()) {
 			console.log(`  ${key}: ${value}`);
 		}
 
-		// Check response timing and other metadata
-		console.log("Response URL:", result["~raw"].url);
-		console.log("Response type:", result["~raw"].type);
-		console.log("Response redirected:", result["~raw"].redirected);
+		// Access raw response for advanced operations
+		console.log("Raw response type:", response["~raw"].type);
+		console.log("Response redirected:", response["~raw"].redirected);
 
 		// You can also access the raw body again if needed
 		// Note: response.clone() is used internally so this won't conflict
-		const rawText = await result["~raw"].text();
+		const rawText = await response["~raw"].text();
 		console.log("Raw response body length:", rawText.length);
 	} catch (error) {
 		console.error("Request failed:", error);
@@ -129,7 +130,7 @@ async function combinedExample() {
 	}, 5000); // 5 second timeout
 
 	try {
-		const result = await api.request("GET /users/{username}", {
+		const response = await api.request("GET /users/{username}", {
 			params: { username: "octocat" },
 			signal: controller.signal,
 			headers: {
@@ -137,13 +138,13 @@ async function combinedExample() {
 			},
 		});
 
-		console.log("GitHub user:", result.login);
-		console.log("Name:", result.name);
-		console.log("Public repos:", result.public_repos);
+		console.log("GitHub user:", response.data.login);
+		console.log("Name:", response.data.name);
+		console.log("Public repos:", response.data.public_repos);
 
-		// Check rate limiting headers through ~raw property
-		const rateLimitRemaining = result["~raw"].headers.get("x-ratelimit-remaining");
-		const rateLimitReset = result["~raw"].headers.get("x-ratelimit-reset");
+		// Check rate limiting headers directly from response
+		const rateLimitRemaining = response.headers.get("x-ratelimit-remaining");
+		const rateLimitReset = response.headers.get("x-ratelimit-reset");
 		
 		console.log("Rate limit remaining:", rateLimitRemaining);
 		if (rateLimitReset) {
@@ -152,7 +153,7 @@ async function combinedExample() {
 		}
 
 		// Check if response was cached
-		const cacheStatus = result["~raw"].headers.get("x-served-by");
+		const cacheStatus = response.headers.get("x-served-by");
 		if (cacheStatus) {
 			console.log("Served by cache:", cacheStatus);
 		}
@@ -200,7 +201,7 @@ async function longPollingExample() {
 	try {
 		console.log("Starting long polling for events...");
 		
-		const result = await api.request("GET /events", {
+		const response = await api.request("GET /events", {
 			query: {
 				timeout: "30", // Server-side timeout
 			},
@@ -209,13 +210,13 @@ async function longPollingExample() {
 
 		clearTimeout(cancelTimeout);
 
-		console.log("Received events:", result.length);
-		result.forEach(event => {
+		console.log("Received events:", response.data.length);
+		response.data.forEach(event => {
 			console.log(`Event ${event.id}: ${event.type} at ${event.timestamp}`);
 		});
 
-		// Check if the connection was kept alive through ~raw property
-		const connection = result["~raw"].headers.get("connection");
+		// Check if the connection was kept alive through headers
+		const connection = response.headers.get("connection");
 		console.log("Connection:", connection);
 	} catch (error) {
 		clearTimeout(cancelTimeout);
@@ -246,25 +247,29 @@ async function typeInferenceExample() {
 		}),
 	});
 
-	// TypeScript knows the exact shape of the response
-	const post = await api.request("GET /posts/{id}", {
+	// TypeScript knows the exact shape of the structured response
+	const response = await api.request("GET /posts/{id}", {
 		params: { id: "1" },
 	});
 
 	// All these have full type inference:
-	console.log("Post ID:", post.id); // number
-	console.log("Post title:", post.title); // string
-	console.log("User ID:", post.userId); // number
+	console.log("Post ID:", response.data.id); // number
+	console.log("Post title:", response.data.title); // string
+	console.log("User ID:", response.data.userId); // number
 
-	// Raw response access also has proper typing:
-	console.log("Status:", post["~raw"].status); // number
-	console.log("Headers:", post["~raw"].headers); // Headers object
-	console.log("Content-Type:", post["~raw"].headers.get("content-type")); // string | null
+	// Structured response properties also have proper typing:
+	console.log("Status:", response.status); // number
+	console.log("Headers:", response.headers); // Headers object
+	console.log("URL:", response.url); // string
+	console.log("Content-Type:", response.headers.get("content-type")); // string | null
 
-	// The ~raw property doesn't interfere with the main data structure
-	const { "~raw": rawResponse, ...postData } = post;
-	console.log("Clean post data:", postData); // { id: number, title: string, body: string, userId: number }
-	console.log("Raw response status:", rawResponse.status); // number
+	// Raw response access also available:
+	console.log("Raw response status:", response["~raw"].status); // number
+	
+	// Clean separation of data and metadata
+	const { data, status, headers, url, "~raw": rawResponse } = response;
+	console.log("Post data:", data); // { id: number, title: string, body: string, userId: number }
+	console.log("Response metadata:", { status, url }); // { status: number, url: string }
 }
 
 // Export usage examples

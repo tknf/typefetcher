@@ -19,9 +19,11 @@
 - **📊 Standard Schema**: Native support for Zod, Valibot, and other Standard Schema compliant libraries
 - **🔍 Request/Response Validation**: Runtime validation with detailed error messages
 - **🏗️ Builder Pattern**: Intuitive API inspired by Hono and Octokit
+- **📋 Structured Response**: Rich response metadata (headers, status, URL) with `~raw` access
 - **⚡ Lightweight**: Zero dependencies (except peer dependencies)
 - **🛡️ Error Handling**: Comprehensive error types for different failure scenarios
 - **🎪 Flexible**: Works with any Standard Schema compliant validation library
+- **🚫 AbortSignal Support**: Request cancellation and timeout support
 
 ## 📦 Installation
 
@@ -75,14 +77,22 @@ const api = client
   .addEndpoint("POST", "/users");
 
 // Make requests (Octokit-style)
-const users = await api.request("GET /users");
-const user = await api.request("GET /users/{id}", {
+const response = await api.request("GET /users");
+
+// Structured response with metadata
+console.log("Data:", response.data);           // Response body
+console.log("Status:", response.status);       // HTTP status code
+console.log("Headers:", response.headers);     // Response headers
+console.log("URL:", response.url);             // Request URL
+console.log("Raw:", response["~raw"]);         // Raw Response object
+
+// Access specific user
+const userResponse = await api.request("GET /users/{id}", {
   params: { id: "1" }
 });
 
-const newUser = await api.request("POST /users", {
-  body: { name: "John", email: "john@example.com" }
-});
+const user = userResponse.data; // Just the data
+const status = userResponse.status; // 200, 404, etc.
 ```
 
 ### Type-Safe Usage with Zod
@@ -125,18 +135,75 @@ const api = client
     response: UserSchema
   });
 
-// Fully type-safe requests
-const users = await api.request("GET /users"); 
-// Type: { id: number; name: string; email: string; }[]
+// Fully type-safe requests with structured responses
+const usersResponse = await api.request("GET /users"); 
+// Type: StructuredResponse<User[]>
 
-const user = await api.request("GET /users/{id}", {
+const users = usersResponse.data; // User[]
+const status = usersResponse.status; // number
+const headers = usersResponse.headers; // Headers
+
+const userResponse = await api.request("GET /users/{id}", {
   params: { id: "123" } // ✅ TypeScript ensures correct type
 });
-// Type: { id: number; name: string; email: string; }
+// Type: StructuredResponse<User>
+
+const user = userResponse.data; // User object
+if (userResponse.status === 200) {
+  console.log("User found:", user.name);
+}
 
 const created = await api.request("POST /users", {
   body: { name: "Jane", email: "jane@example.com" } // ✅ Validated at runtime
 });
+
+// Access creation details
+console.log("Created user:", created.data);
+console.log("Location:", created.headers.get("location"));
+console.log("Status:", created.status); // 201
+```
+
+## 📊 Response Structure
+
+Every request returns a structured response with rich metadata:
+
+```typescript
+interface StructuredResponse<T> {
+  readonly data: T;              // Parsed response data (your API data)
+  readonly headers: Headers;     // Response headers object  
+  readonly status: number;       // HTTP status code (200, 404, etc.)
+  readonly url: string;          // Final request URL
+  readonly "~raw": Response;     // Raw fetch Response object
+}
+```
+
+### Working with Response Data
+
+```typescript
+const response = await api.request("GET /users/{id}", {
+  params: { id: "123" }
+});
+
+// Access parsed data (type-safe when schema is provided)
+const user = response.data;
+
+// Check HTTP status
+if (response.status === 200) {
+  console.log("Success!");
+} else if (response.status === 404) {
+  console.log("User not found");
+}
+
+// Access response headers
+const contentType = response.headers.get("content-type");
+const rateLimit = response.headers.get("x-rate-limit-remaining");
+
+// Get request URL (useful for debugging)
+console.log("Request was made to:", response.url);
+
+// Access raw Response for advanced use cases
+const rawResponse = response["~raw"];
+const responseText = await rawResponse.clone().text();
 ```
 
 ### Type-Safe Usage with Valibot
@@ -168,10 +235,13 @@ const api = client
   });
 
 // Same type-safe API as with Zod
-const users = await api.request("GET /users");
-const newUser = await api.request("POST /users", {
+const usersResponse = await api.request("GET /users");
+const users = usersResponse.data; // User[]
+
+const newUserResponse = await api.request("POST /users", {
   body: { name: "John", email: "john@example.com" }
 });
+const newUser = newUserResponse.data; // User
 ```
 
 ## 📚 API Reference
@@ -215,8 +285,8 @@ Registers a new endpoint with optional schema validation.
 **Schema Object:**
 ```typescript
 interface EndpointSchema {
-  readonly params?: StandardSchemaV1;    // Path parameters (formerly pathParams)
-  readonly query?: StandardSchemaV1;     // Query parameters
+  readonly params?: StandardSchemaV1;    // Path parameters
+  readonly query?: StandardSchemaV1;     // Query parameters  
   readonly body?: StandardSchemaV1;      // Request body
   readonly response?: StandardSchemaV1;  // Response validation
 }
@@ -225,27 +295,119 @@ interface EndpointSchema {
 ### request
 
 ```typescript
-request<K>(key: K, options?: RequestOptions): Promise<ResponseType>
+request<K>(key: K, options?: RequestOptions): Promise<StructuredResponse<T>>
 ```
 
-Executes a request to a registered endpoint.
+Executes a request to a registered endpoint and returns a structured response.
 
 **Parameters:**
 - `key`: Endpoint key in format `"METHOD /path"`
 - `options`: Request options (automatically typed based on schema)
 
-**Request Options (when schema is provided):**
+**Request Options:**
 ```typescript
-// Schema-specified parameters become required
-{
-  params: InferInput<ParamsSchema>;    // Required if params schema exists
-  query: InferInput<QuerySchema>;      // Required if query schema exists  
-  body: InferInput<BodySchema>;        // Required if body schema exists
-  headers?: Record<string, string>;    // Always optional
+interface RequestOptions {
+  readonly params?: Record<string, string> | SchemaType;   // Path parameters
+  readonly query?: Record<string, string> | SchemaType;    // Query parameters
+  readonly body?: unknown | SchemaType;                    // Request body
+  readonly headers?: Record<string, string>;               // Custom headers
+  readonly signal?: AbortSignal;                           // Abort signal
 }
+
+// When schema is provided, corresponding fields become required and strongly typed
 ```
 
 ## 🔧 Advanced Usage
+
+### AbortSignal Support
+
+```typescript
+// Request cancellation
+const controller = new AbortController();
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+
+try {
+  const response = await api.request("GET /users/{id}", {
+    params: { id: "123" },
+    signal: controller.signal
+  });
+  
+  console.log("User:", response.data);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log("Request was cancelled");
+  }
+}
+```
+
+### Custom Headers per Request
+
+```typescript
+const response = await api.request("GET /users/{id}", {
+  params: { id: "123" },
+  headers: {
+    "Accept-Language": "en-US",
+    "X-Custom-Header": "value",
+    "Authorization": "Bearer specific-token" // Override global headers
+  }
+});
+```
+
+### Query Parameters
+
+```typescript
+const QuerySchema = z.object({
+  page: z.string(),
+  limit: z.string(),
+  search: z.string().optional()
+});
+
+const api = client.addEndpoint("GET", "/users", {
+  query: QuerySchema,
+  response: z.array(UserSchema)
+});
+
+const response = await api.request("GET /users", {
+  query: {
+    page: "1",
+    limit: "10",
+    search: "john"
+  }
+});
+
+console.log("Users:", response.data);
+console.log("Total pages:", response.headers.get("x-total-pages"));
+```
+
+### Working with Raw Response
+
+For advanced use cases, access the raw `Response` object:
+
+```typescript
+const response = await api.request("GET /download/{id}", {
+  params: { id: "file123" }
+});
+
+// Access raw Response
+const rawResponse = response["~raw"];
+
+// Stream response body
+const reader = rawResponse.body?.getReader();
+const contentLength = rawResponse.headers.get("content-length");
+
+console.log(`Downloading ${contentLength} bytes`);
+
+// Process stream...
+while (reader) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  // Process chunk
+  console.log(`Received ${value.length} bytes`);
+}
+```
 
 ### Node.js Usage
 
@@ -278,9 +440,12 @@ const client = new TypeFetcher({
 import { TypeFetcherError, ValidationError } from "@tknf/typefetcher";
 
 try {
-  const user = await api.request("GET /users/{id}", {
+  const response = await api.request("GET /users/{id}", {
     params: { id: "123" }
   });
+  
+  console.log("User:", response.data);
+  console.log("Status:", response.status);
 } catch (error) {
   if (error instanceof TypeFetcherError) {
     // HTTP errors (404, 500, etc.)
@@ -289,47 +454,14 @@ try {
   } else if (error instanceof ValidationError) {
     // Schema validation errors
     console.error("Validation failed:", error.message);
-    console.error("Issues:", error.issues);
+    error.issues.forEach(issue => {
+      console.error(`- ${issue.message} at ${issue.path?.join('.')}`);
+    });
   } else {
-    // Other errors
+    // Other errors (network, abort, etc.)
     console.error("Unexpected error:", error);
   }
 }
-```
-
-### Custom Headers per Request
-
-```typescript
-const user = await api.request("GET /users/{id}", {
-  params: { id: "123" },
-  headers: {
-    "Accept-Language": "en-US",
-    "Custom-Header": "value"
-  }
-});
-```
-
-### Query Parameters
-
-```typescript
-const QuerySchema = z.object({
-  page: z.string(),
-  limit: z.string(),
-  search: z.string().optional()
-});
-
-const api = client.addEndpoint("GET", "/users", {
-  query: QuerySchema,
-  response: z.array(UserSchema)
-});
-
-const users = await api.request("GET /users", {
-  query: {
-    page: "1",
-    limit: "10",
-    search: "john"
-  }
-});
 ```
 
 ### Schema Transformations
@@ -338,7 +470,8 @@ Zod and Valibot schemas with transformations work seamlessly:
 
 ```typescript
 const TransformSchema = z.object({
-  id: z.string().transform(val => val.toUpperCase())
+  id: z.string().transform(val => val.toUpperCase()),
+  date: z.string().transform(val => new Date(val))
 });
 
 const api = client.addEndpoint("GET", "/items/{id}", {
@@ -346,8 +479,9 @@ const api = client.addEndpoint("GET", "/items/{id}", {
 });
 
 // Input is transformed before making the request
-await api.request("GET /items/{id}", {
-  params: { id: "abc" } // Becomes "ABC" in the actual URL
+const response = await api.request("GET /items/{id}", {
+  params: { id: "abc", date: "2023-01-01" }
+  // Becomes: id="ABC", date=Date object in the actual request
 });
 ```
 
@@ -366,11 +500,27 @@ const schema = z.string(); // Works with Zod 3.25.0+
 const schema = v.string(); // Works with Valibot 1.0.0+
 ```
 
+### Rich Response Information
+
+Get comprehensive response metadata without extra work:
+
+```typescript
+// ❌ Traditional fetch
+const rawResponse = await fetch("/api/users");
+const data = await rawResponse.json();
+// Lost: headers, status, url information
+
+// ✅ TypeFetcher structured response
+const response = await api.request("GET /users");
+// Available: data, headers, status, url, ~raw
+```
+
 ### Excellent TypeScript Integration
 
 - **Required Parameters**: Schema-specified parameters become required in TypeScript
 - **Type Inference**: Full type inference from schemas to response types
-- **Autocomplete**: Rich IDE support with parameter suggestions
+- **Autocomplete**: Rich IDE support with endpoint and parameter suggestions
+- **Structured Response**: Access both data and metadata with full type safety
 
 ### Minimal Bundle Size
 
@@ -416,64 +566,113 @@ class BlogAPI {
     });
 
   async getAllPosts() {
-    return this.api.request("GET /posts");
+    const response = await this.api.request("GET /posts");
+    return {
+      posts: response.data,
+      count: response.headers.get("x-total-count")
+    };
   }
 
   async getPost(id: string) {
-    return this.api.request("GET /posts/{id}", { params: { id } });
+    const response = await this.api.request("GET /posts/{id}", { 
+      params: { id } 
+    });
+    
+    if (response.status === 404) {
+      throw new Error("Post not found");
+    }
+    
+    return response.data;
   }
 
   async createPost(post: { title: string; body: string; userId: number }) {
-    return this.api.request("POST /posts", { body: post });
+    const response = await this.api.request("POST /posts", { body: post });
+    
+    return {
+      post: response.data,
+      location: response.headers.get("location"),
+      status: response.status
+    };
   }
 }
 ```
 
-### GraphQL-like Type Safety
+### File Upload with Progress
 
 ```typescript
-// Define your API schema once
-const api = client
-  .addEndpoint("GET", "/users/{id}/profile", {
-    params: z.object({ id: z.string() }),
-    response: z.object({
-      user: UserSchema,
-      preferences: PreferencesSchema,
-      statistics: StatsSchema
-    })
-  });
-
-// Get fully typed response
-const profile = await api.request("GET /users/{id}/profile", {
-  params: { id: "123" }
+const api = client.addEndpoint("POST", "/upload", {
+  body: z.instanceof(FormData),
+  response: z.object({
+    fileId: z.string(),
+    url: z.string()
+  })
 });
 
-// TypeScript knows the exact shape:
-// profile.user.name
-// profile.preferences.theme  
-// profile.statistics.loginCount
+async function uploadFile(file: File, onProgress?: (progress: number) => void) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await api.request("POST /upload", {
+    body: formData,
+    headers: {
+      // Don't set Content-Type, let browser set it with boundary
+    }
+  });
+
+  console.log("Upload completed!");
+  console.log("File ID:", response.data.fileId);
+  console.log("File URL:", response.data.url);
+  console.log("Server:", response.headers.get("server"));
+
+  return response.data;
+}
+```
+
+### Pagination Helper
+
+```typescript
+async function getAllUsers() {
+  const users = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await api.request("GET /users", {
+      query: { page: page.toString(), limit: "50" }
+    });
+
+    users.push(...response.data);
+
+    // Check if there are more pages
+    const totalPages = parseInt(response.headers.get("x-total-pages") || "1");
+    hasMore = page < totalPages;
+    page++;
+  }
+
+  return users;
+}
 ```
 
 ## 🛠️ Development
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run tests
-npm test
+pnpm test
 
 # Run tests with coverage
-npm run test:coverage
+pnpm run test:coverage
 
 # Type checking
-npm run typecheck
+pnpm run typecheck
 
 # Linting
-npm run lint
+pnpm run lint
 
 # Build
-npm run build
+pnpm run build
 ```
 
 ## 📋 Requirements

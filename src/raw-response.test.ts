@@ -7,11 +7,12 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Helper to create mock response with clone method
-const createMockResponse = (data: unknown, options: { status?: number; statusText?: string; headers?: Record<string, string>; ok?: boolean } = {}) => {
+const createMockResponse = (data: unknown, options: { status?: number; statusText?: string; headers?: Record<string, string>; ok?: boolean; url?: string } = {}) => {
 	const response = {
 		ok: options.ok ?? (options.status === undefined || options.status < 400),
 		status: options.status ?? 200,
 		statusText: options.statusText ?? "OK",
+		url: options.url ?? "https://api.example.com/test",
 		headers: new Headers({ "content-type": "application/json", ...options.headers }),
 		json: vi.fn().mockResolvedValue(data),
 		text: vi.fn().mockResolvedValue(typeof data === "string" ? data : JSON.stringify(data)),
@@ -48,9 +49,9 @@ describe("~raw Response Property", () => {
 		});
 
 		// Check parsed data properties
-		expect(result.id).toBe(1);
-		expect(result.name).toBe("John");
-		expect(result.email).toBe("john@example.com");
+		expect(result.data.id).toBe(1);
+		expect(result.data.name).toBe("John");
+		expect(result.data.email).toBe("john@example.com");
 
 		// Check ~raw property
 		expect(result["~raw"]).toBeDefined();
@@ -71,7 +72,7 @@ describe("~raw Response Property", () => {
 		const result = await api.request("GET /anything");
 
 		// Check that response includes both data and ~raw
-		expect(result).toMatchObject(responseData);
+		expect(result.data).toMatchObject(responseData);
 		expect(result["~raw"]).toBeDefined();
 		expect(result["~raw"].status).toBe(200);
 	});
@@ -126,7 +127,7 @@ describe("~raw Response Property", () => {
 		);
 
 		// Verify we get data with ~raw property
-		expect(result.message).toBe("success");
+		expect(result.data.message).toBe("success");
 		expect(result["~raw"].status).toBe(200);
 	});
 

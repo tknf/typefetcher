@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { TypeFetcher } from "./client";
-import { TypeFetcherError, ValidationError } from "./types";
+import { TypeFetcherError } from "./types";
 import { z } from "zod";
 
 // Mock fetch
@@ -8,11 +8,12 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Helper to create mock response with clone method
-const createMockResponse = (data: unknown, options: { status?: number; statusText?: string; headers?: Record<string, string>; ok?: boolean } = {}) => {
+const createMockResponse = (data: unknown, options: { status?: number; statusText?: string; headers?: Record<string, string>; ok?: boolean; url?: string } = {}) => {
 	const response = {
 		ok: options.ok ?? (options.status === undefined || options.status < 400),
 		status: options.status ?? 200,
 		statusText: options.statusText ?? "OK",
+		url: options.url ?? "https://api.example.com/test",
 		headers: new Headers({ "content-type": "application/json", ...options.headers }),
 		json: vi.fn().mockResolvedValue(data),
 		text: vi.fn().mockResolvedValue(typeof data === "string" ? data : JSON.stringify(data)),
@@ -50,7 +51,7 @@ describe("TypeFetcher with ~raw Response", () => {
 			params: { id: "1" },
 		});
 
-		expect(result).toMatchObject(responseData);
+		expect(result.data).toMatchObject(responseData);
 		expect(result["~raw"]).toBeDefined();
 		expect(result["~raw"].status).toBe(200);
 		expect(mockFetch).toHaveBeenCalledWith(
@@ -72,7 +73,7 @@ describe("TypeFetcher with ~raw Response", () => {
 			body: requestData,
 		});
 
-		expect(result).toMatchObject(responseData);
+		expect(result.data).toMatchObject(responseData);
 		expect(result["~raw"].status).toBe(200);
 		expect(mockFetch).toHaveBeenCalledWith(
 			"https://api.example.com/users",
@@ -109,10 +110,13 @@ describe("TypeFetcher with ~raw Response", () => {
 		});
 
 		// Type inference should work - these properties should be strongly typed
-		expect(result.id).toBe(3);
-		expect(result.name).toBe("Alice");
-		expect(result.email).toBe("alice@example.com");
+		expect(result.data.id).toBe(3);
+		expect(result.data.name).toBe("Alice");
+		expect(result.data.email).toBe("alice@example.com");
 		expect(result["~raw"].status).toBe(200);
+		expect(result.status).toBe(200);
+		expect(result.headers).toBeDefined();
+		expect(result.url).toBeDefined();
 	});
 
 	test("should throw ValidationError for invalid request body", async () => {
@@ -126,6 +130,7 @@ describe("TypeFetcher with ~raw Response", () => {
 
 		await expect(
 			client.request("POST /users", {
+				// biome-ignore lint/suspicious/noExplicitAny: Test requires invalid input type
 				body: { name: 123 } as any, // Invalid input - name should be string, not number
 			})
 		).rejects.toThrow("Request body validation failed");
@@ -174,6 +179,7 @@ describe("TypeFetcher with ~raw Response", () => {
 		const client = fetcher.addEndpoint("GET", "/users");
 
 		await expect(
+			// biome-ignore lint/suspicious/noExplicitAny: Test requires invalid endpoint key
 			client.request("POST /users" as any, {})
 		).rejects.toThrow("Endpoint not found: POST /users");
 	});
@@ -202,6 +208,7 @@ describe("TypeFetcher with ~raw Response", () => {
 
 		await expect(
 			client.request("GET /users/{id}", {
+				// biome-ignore lint/suspicious/noExplicitAny: Test requires invalid parameter
 				params: { notId: "value" } as any, // Wrong parameter name
 			})
 		).rejects.toThrow("Missing path parameter: id");
@@ -211,6 +218,7 @@ describe("TypeFetcher with ~raw Response", () => {
 		const client = fetcher.addEndpoint("GET", "/users");
 
 		await expect(
+			// biome-ignore lint/suspicious/noExplicitAny: Test requires invalid format
 			client.request("INVALID FORMAT" as any, {})
 		).rejects.toThrow("Endpoint not found: INVALID FORMAT");
 	});
@@ -285,8 +293,8 @@ describe("TypeFetcher with ~raw Response", () => {
 			params: { id: "1" },
 		});
 
-		expect(result.id).toBe(1);
-		expect(result.name).toBe("John");
+		expect(result.data.id).toBe(1);
+		expect(result.data.name).toBe("John");
 		expect(result["~raw"].status).toBe(200);
 	});
 
@@ -469,11 +477,13 @@ describe("TypeFetcher with ~raw Response", () => {
 		const client = fetcher.addEndpoint("GET", "/test");
 		
 		// Mock endpoints directly to test parseRequestKey edge case
+		// biome-ignore lint/suspicious/noExplicitAny: Test requires accessing private property
 		(client as any).endpoints = {
 			"INVALID": { method: "GET", path: "/test" }
 		};
 
 		await expect(
+			// biome-ignore lint/suspicious/noExplicitAny: Test requires accessing private method
 			(client as any).request("INVALID", {})
 		).rejects.toThrow("Invalid request key format: INVALID");
 	});

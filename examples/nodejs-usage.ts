@@ -27,9 +27,15 @@ function nodeJsModernExample() {
 
 	return {
 		async getUser(id: string) {
-			return await api.request("GET /users/{id}", {
+			const response = await api.request("GET /users/{id}", {
 				params: { id },
 			});
+			
+			console.log("User data:", response.data);
+			console.log("Response status:", response.status);
+			console.log("Content-Type:", response.headers.get("content-type"));
+			
+			return response.data;
 		},
 	};
 }
@@ -57,9 +63,15 @@ async function nodeJsCustomFetchExample() {
 
 	return {
 		async getUser(id: string) {
-			return await api.request("GET /users/{id}", {
+			const response = await api.request("GET /users/{id}", {
 				params: { id },
 			});
+			
+			return {
+				user: response.data,
+				status: response.status,
+				url: response.url
+			};
 		},
 	};
 }
@@ -80,7 +92,15 @@ async function nodeJsUndiciExample() {
 
 	return {
 		async getUsers() {
-			return await api.request("GET /users");
+			const response = await api.request("GET /users");
+			
+			console.log("Fetched", response.data?.length || 0, "users");
+			console.log("Response headers:");
+			for (const [key, value] of response.headers.entries()) {
+				console.log(`  ${key}: ${value}`);
+			}
+			
+			return response.data;
 		},
 	};
 }

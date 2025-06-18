@@ -62,27 +62,33 @@ type RequestOptionsForEndpoint<
 		};
 
 /**
- * Base response type with raw response access
+ * Structured response type with additional metadata
  */
-type BaseResponseWithRaw<T> = T & { readonly "~raw": Response };
+type StructuredResponse<T> = {
+	readonly data: T;
+	readonly headers: Headers;
+	readonly status: number;
+	readonly url: string;
+	readonly "~raw": Response;
+};
 
 /**
- * Generate response type from endpoint map with raw response access
+ * Generate response type from endpoint map with structured response
  */
 type ResponseForEndpoint<
 	T extends EndpointMap,
 	K extends keyof T,
 > = T[K] extends EndpointDefinition<HttpMethod, string, infer Schema>
 	? Schema extends EndpointSchema
-		? BaseResponseWithRaw<ResponseType<Schema>>
-		: BaseResponseWithRaw<unknown>
-	: BaseResponseWithRaw<unknown>;
+		? StructuredResponse<ResponseType<Schema>>
+		: StructuredResponse<unknown>
+	: StructuredResponse<unknown>;
 
 /**
  * TypeScript-first API client with Standard Schema support
  * Provides type-safe HTTP requests with runtime validation
  */
-export class TypeFetcher<T extends EndpointMap = {}> {
+export class TypeFetcher<T extends EndpointMap = Record<string, never>> {
 	private endpoints: T;
 	private config: TypeFetcherConfig;
 	private fetch: typeof globalThis.fetch;
@@ -242,15 +248,22 @@ export class TypeFetcher<T extends EndpointMap = {}> {
 		}
 
 		// Validate response data against schema
+		let finalData: unknown = responseData;
 		if (endpoint.schema?.response) {
 			const validation = validateSync(endpoint.schema.response, responseData);
 			if (!validation.success) {
 				throw new ValidationError(validation.issues || [], "Response validation failed");
 			}
-			return Object.assign(validation.data as any, { "~raw": responseClone }) as ResponseForEndpoint<T, K>;
+			finalData = validation.data;
 		}
 
-		return Object.assign(responseData as any, { "~raw": responseClone }) as ResponseForEndpoint<T, K>;
+		return {
+			data: finalData,
+			headers: response.headers,
+			status: response.status,
+			url: response.url,
+			"~raw": responseClone,
+		} as ResponseForEndpoint<T, K>;
 	}
 
 	/**

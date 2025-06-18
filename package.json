@@ -10,9 +10,7 @@
 		"type-safe",
 		"standard-schema",
 		"validation",
-		"dx",
-		"hono-like",
-		"octokit-like"
+		"dx"
 	],
 	"repository": {
 		"url": "https://github.com/tknf/typefetcher"

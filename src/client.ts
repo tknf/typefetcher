@@ -19,21 +19,21 @@ function getFetchImplementation(customFetch?: typeof globalThis.fetch): typeof g
 	if (customFetch) {
 		return customFetch;
 	}
-	
+
 	// Check for globalThis.fetch (modern browsers and Node.js 18+)
 	if (typeof globalThis !== "undefined" && globalThis.fetch) {
 		return globalThis.fetch.bind(globalThis);
 	}
-	
+
 	// Check for global.fetch (Node.js)
 	if (typeof global !== "undefined" && global.fetch) {
 		return global.fetch.bind(global);
 	}
-	
+
 	// No fetch available
 	throw new Error(
 		"fetch is not available. Please provide a fetch implementation in the config, " +
-		"upgrade to Node.js 18+, or install a fetch polyfill."
+			"upgrade to Node.js 18+, or install a fetch polyfill."
 	);
 }
 
@@ -221,7 +221,7 @@ export class TypeFetcher<T extends EndpointMap = Record<string, never>> {
 		}
 
 		const response = await this.fetch(url.toString(), requestInit);
-		
+
 		// Clone response immediately before consuming body
 		const responseClone = response.clone();
 

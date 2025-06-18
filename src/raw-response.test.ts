@@ -1,13 +1,22 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import { TypeFetcher } from "./client";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
+import { TypeFetcher } from "./client";
 
 // Mock fetch for testing
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Helper to create mock response with clone method
-const createMockResponse = (data: unknown, options: { status?: number; statusText?: string; headers?: Record<string, string>; ok?: boolean; url?: string } = {}) => {
+const createMockResponse = (
+	data: unknown,
+	options: {
+		status?: number;
+		statusText?: string;
+		headers?: Record<string, string>;
+		ok?: boolean;
+		url?: string;
+	} = {}
+) => {
 	const response = {
 		ok: options.ok ?? (options.status === undefined || options.status < 400),
 		status: options.status ?? 200,
@@ -79,9 +88,11 @@ describe("~raw Response Property", () => {
 
 	test("should work with non-JSON response", async () => {
 		const textResponse = "Plain text response";
-		mockFetch.mockResolvedValue(createMockResponse(textResponse, {
-			headers: { "content-type": "text/plain" },
-		}));
+		mockFetch.mockResolvedValue(
+			createMockResponse(textResponse, {
+				headers: { "content-type": "text/plain" },
+			})
+		);
 
 		const client = new TypeFetcher({
 			baseURL: "https://api.example.com",
@@ -133,9 +144,11 @@ describe("~raw Response Property", () => {
 
 	test("should work with custom headers", async () => {
 		const responseData = { data: "test" };
-		mockFetch.mockResolvedValue(createMockResponse(responseData, {
-			headers: { "x-custom-header": "custom-value" },
-		}));
+		mockFetch.mockResolvedValue(
+			createMockResponse(responseData, {
+				headers: { "x-custom-header": "custom-value" },
+			})
+		);
 
 		const client = new TypeFetcher({
 			baseURL: "https://api.example.com",
@@ -145,7 +158,7 @@ describe("~raw Response Property", () => {
 
 		const result = await api.request("GET /test", {
 			headers: {
-				"Accept": "application/json",
+				Accept: "application/json",
 			},
 		});
 
@@ -154,14 +167,16 @@ describe("~raw Response Property", () => {
 
 	test("should preserve response headers and metadata", async () => {
 		const responseData = { id: 1 };
-		mockFetch.mockResolvedValue(createMockResponse(responseData, {
-			status: 201,
-			statusText: "Created",
-			headers: {
-				"location": "/users/1",
-				"x-ratelimit-remaining": "999",
-			},
-		}));
+		mockFetch.mockResolvedValue(
+			createMockResponse(responseData, {
+				status: 201,
+				statusText: "Created",
+				headers: {
+					location: "/users/1",
+					"x-ratelimit-remaining": "999",
+				},
+			})
+		);
 
 		const client = new TypeFetcher({
 			baseURL: "https://api.example.com",

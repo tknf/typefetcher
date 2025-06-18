@@ -1,14 +1,23 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { z } from "zod";
 import { TypeFetcher } from "./client";
 import { TypeFetcherError } from "./types";
-import { z } from "zod";
 
 // Mock fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Helper to create mock response with clone method
-const createMockResponse = (data: unknown, options: { status?: number; statusText?: string; headers?: Record<string, string>; ok?: boolean; url?: string } = {}) => {
+const createMockResponse = (
+	data: unknown,
+	options: {
+		status?: number;
+		statusText?: string;
+		headers?: Record<string, string>;
+		ok?: boolean;
+		url?: string;
+	} = {}
+) => {
 	const response = {
 		ok: options.ok ?? (options.status === undefined || options.status < 400),
 		status: options.status ?? 200,
@@ -138,11 +147,13 @@ describe("TypeFetcher with ~raw Response", () => {
 
 	test("should handle HTTP errors", async () => {
 		const errorData = { error: "User not found" };
-		mockFetch.mockResolvedValueOnce(createMockResponse(errorData, {
-			status: 404,
-			statusText: "Not Found",
-			ok: false,
-		}));
+		mockFetch.mockResolvedValueOnce(
+			createMockResponse(errorData, {
+				status: 404,
+				statusText: "Not Found",
+				ok: false,
+			})
+		);
 
 		const client = fetcher.addEndpoint("GET", "/users/{id}");
 
@@ -225,9 +236,11 @@ describe("TypeFetcher with ~raw Response", () => {
 
 	test("should handle non-JSON response", async () => {
 		const textResponse = "Plain text";
-		mockFetch.mockResolvedValueOnce(createMockResponse(textResponse, {
-			headers: { "content-type": "text/plain" },
-		}));
+		mockFetch.mockResolvedValueOnce(
+			createMockResponse(textResponse, {
+				headers: { "content-type": "text/plain" },
+			})
+		);
 
 		const client = fetcher.addEndpoint("GET", "/text");
 
@@ -238,12 +251,14 @@ describe("TypeFetcher with ~raw Response", () => {
 
 	test("should handle HTTP error with non-JSON response", async () => {
 		const errorText = "Internal Server Error";
-		mockFetch.mockResolvedValueOnce(createMockResponse(errorText, {
-			status: 500,
-			statusText: "Internal Server Error",
-			headers: { "content-type": "text/plain" },
-			ok: false,
-		}));
+		mockFetch.mockResolvedValueOnce(
+			createMockResponse(errorText, {
+				status: 500,
+				statusText: "Internal Server Error",
+				headers: { "content-type": "text/plain" },
+				ok: false,
+			})
+		);
 
 		const client = fetcher.addEndpoint("GET", "/error");
 
@@ -366,10 +381,7 @@ describe("TypeFetcher with ~raw Response", () => {
 			params: { id: "123" },
 		});
 
-		expect(mockFetch).toHaveBeenCalledWith(
-			"https://api.example.com/users/123",
-			expect.any(Object)
-		);
+		expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/users/123", expect.any(Object));
 	});
 
 	test("should validate and use query parameters with schema", async () => {
@@ -433,7 +445,7 @@ describe("TypeFetcher with ~raw Response", () => {
 
 	test("should use custom fetch implementation", async () => {
 		const customFetch = vi.fn().mockResolvedValue(createMockResponse({ data: "custom" }));
-		
+
 		const client = new TypeFetcher({
 			baseURL: "https://api.example.com",
 			fetch: customFetch,
@@ -442,30 +454,27 @@ describe("TypeFetcher with ~raw Response", () => {
 		const api = client.addEndpoint("GET", "/custom");
 		await api.request("GET /custom");
 
-		expect(customFetch).toHaveBeenCalledWith(
-			"https://api.example.com/custom",
-			expect.any(Object)
-		);
+		expect(customFetch).toHaveBeenCalledWith("https://api.example.com/custom", expect.any(Object));
 	});
 
 	test("should handle GET and DELETE methods without body", async () => {
 		mockFetch.mockResolvedValue(createMockResponse({ success: true }));
 
-		const client = fetcher
-			.addEndpoint("GET", "/get-test")
-			.addEndpoint("DELETE", "/delete-test");
+		const client = fetcher.addEndpoint("GET", "/get-test").addEndpoint("DELETE", "/delete-test");
 
 		await client.request("GET /get-test");
 		await client.request("DELETE /delete-test");
 
 		// Both calls should not include body in request
-		expect(mockFetch).toHaveBeenNthCalledWith(1,
+		expect(mockFetch).toHaveBeenNthCalledWith(
+			1,
 			"https://api.example.com/get-test",
 			expect.not.objectContaining({
 				body: expect.anything(),
 			})
 		);
-		expect(mockFetch).toHaveBeenNthCalledWith(2,
+		expect(mockFetch).toHaveBeenNthCalledWith(
+			2,
 			"https://api.example.com/delete-test",
 			expect.not.objectContaining({
 				body: expect.anything(),
@@ -475,11 +484,11 @@ describe("TypeFetcher with ~raw Response", () => {
 
 	test("should handle invalid request key format that passes initial check", async () => {
 		const client = fetcher.addEndpoint("GET", "/test");
-		
+
 		// Mock endpoints directly to test parseRequestKey edge case
 		// biome-ignore lint/suspicious/noExplicitAny: Test requires accessing private property
 		(client as any).endpoints = {
-			"INVALID": { method: "GET", path: "/test" }
+			INVALID: { method: "GET", path: "/test" },
 		};
 
 		await expect(
@@ -496,7 +505,7 @@ describe("TypeFetcher with ~raw Response", () => {
 			headers: { "content-type": "text/plain" },
 			ok: false,
 		});
-		
+
 		mockFetch.mockResolvedValueOnce(mockResponse);
 
 		const client = fetcher.addEndpoint("GET", "/error");

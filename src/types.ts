@@ -1,4 +1,4 @@
-import type { StandardSchemaV1, InferInput, InferOutput } from "./schema";
+import type { InferInput, InferOutput, StandardSchemaV1 } from "./schema";
 
 /**
  * Supported HTTP methods for API requests

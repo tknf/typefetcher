@@ -1,13 +1,13 @@
 // 公式Standard Schemaの型を使用
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-export type { StandardSchemaV1 } from "@standard-schema/spec";
-export type {
-	StandardSchemaV1 as StandardSchemaV1Props,
-	StandardSchemaV1 as StandardSchema,
-} from "@standard-schema/spec";
 
 // 公式の結果型をエクスポート
-export type { StandardSchemaV1 as StandardSchemaTypes } from "@standard-schema/spec";
+export type {
+	StandardSchemaV1,
+	StandardSchemaV1 as StandardSchemaV1Props,
+	StandardSchemaV1 as StandardSchema,
+	StandardSchemaV1 as StandardSchemaTypes,
+} from "@standard-schema/spec";
 
 // 互換性のための結果型（簡素化したインターフェース）
 export interface StandardSchemaResult<Output> {

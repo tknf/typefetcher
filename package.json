@@ -1,6 +1,6 @@
 {
 	"name": "@tknf/typefetcher",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "TypeScript-first API client with Standard Schema support, providing excellent DX and strict type safety.",
 	"keywords": [
 		"typescript",

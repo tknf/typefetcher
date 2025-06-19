@@ -74,10 +74,10 @@ function valibotDirectExample() {
 			const response = await api.request("POST /users", {
 				body: userData,
 			});
-			
+
 			console.log("Created user with status:", response.status);
 			console.log("Location header:", response.headers.get("location"));
-			
+
 			return response.data;
 		},
 
@@ -86,7 +86,7 @@ function valibotDirectExample() {
 				params: { id },
 				body: userData,
 			});
-			
+
 			return {
 				user: response.data,
 				status: response.status,

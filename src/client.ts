@@ -88,7 +88,7 @@ type ResponseForEndpoint<
  * TypeScript-first API client with Standard Schema support
  * Provides type-safe HTTP requests with runtime validation
  */
-export class TypeFetcher<T extends EndpointMap = Record<string, never>> {
+export class TypeFetcher<T extends EndpointMap = Record<never, never>> {
 	private endpoints: T;
 	private config: TypeFetcherConfig;
 	private fetch: typeof globalThis.fetch;
@@ -112,20 +112,21 @@ export class TypeFetcher<T extends EndpointMap = Record<string, never>> {
 		path: Path,
 		schema?: Schema
 	): TypeFetcher<T & Record<`${Method} ${Path}`, EndpointDefinition<Method, Path, Schema>>> {
-		const key = `${method} ${path}` as const;
+		const key = `${method} ${path}` as `${Method} ${Path}`;
 		const newEndpoints = {
 			...this.endpoints,
 			[key]: {
 				method,
 				path,
 				schema,
-			},
+			} as EndpointDefinition<Method, Path, Schema>,
 		} as T & Record<`${Method} ${Path}`, EndpointDefinition<Method, Path, Schema>>;
 
 		const newFetcher = new TypeFetcher<
 			T & Record<`${Method} ${Path}`, EndpointDefinition<Method, Path, Schema>>
 		>(this.config);
 		newFetcher.endpoints = newEndpoints;
+		newFetcher.fetch = this.fetch;
 		return newFetcher;
 	}
 
@@ -133,7 +134,7 @@ export class TypeFetcher<T extends EndpointMap = Record<string, never>> {
 	 * Execute a request to a registered endpoint
 	 * Validates request parameters and response data if schemas are provided
 	 */
-	async request<K extends string & keyof T>(
+	async request<K extends keyof T>(
 		key: K,
 		options?: RequestOptionsForEndpoint<T, K>
 	): Promise<ResponseForEndpoint<T, K>> {

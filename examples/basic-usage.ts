@@ -144,12 +144,12 @@ function typeSafeExample() {
 			const response = await api.request("POST /users", {
 				body: userData, // Type-checked against CreateUserSchema
 			});
-			
+
 			// Access both data and metadata
 			console.log("Created user:", response.data);
 			console.log("Location header:", response.headers.get("location"));
 			console.log("Status:", response.status);
-			
+
 			return response.data;
 		},
 
@@ -214,7 +214,7 @@ async function errorHandlingExample() {
 		const response = await api.request("GET /users/{id}", {
 			params: { id: "123" },
 		});
-		
+
 		console.log("User data:", response.data);
 		console.log("Status:", response.status);
 		console.log("Headers:", response.headers);
@@ -250,16 +250,16 @@ async function rawResponseExample() {
 
 	// Access raw Response for advanced operations
 	const rawResponse = response["~raw"];
-	
+
 	// Stream the response body
 	const reader = rawResponse.body?.getReader();
-	
+
 	// Check response headers
 	const contentType = rawResponse.headers.get("content-type");
 	const contentLength = rawResponse.headers.get("content-length");
-	
+
 	console.log(`Downloading ${contentType}, size: ${contentLength} bytes`);
-	
+
 	// Process stream...
 	if (reader) {
 		// Handle streaming...
@@ -273,10 +273,10 @@ async function rawResponseExample() {
 }
 
 // Export usage examples
-export { 
-	basicExample, 
-	typeSafeExample, 
+export {
+	basicExample,
+	typeSafeExample,
 	advancedExample,
 	errorHandlingExample,
-	rawResponseExample 
+	rawResponseExample
 };

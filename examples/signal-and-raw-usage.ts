@@ -145,7 +145,7 @@ async function combinedExample() {
 		// Check rate limiting headers directly from response
 		const rateLimitRemaining = response.headers.get("x-ratelimit-remaining");
 		const rateLimitReset = response.headers.get("x-ratelimit-reset");
-		
+
 		console.log("Rate limit remaining:", rateLimitRemaining);
 		if (rateLimitReset) {
 			const resetDate = new Date(parseInt(rateLimitReset) * 1000);
@@ -200,7 +200,7 @@ async function longPollingExample() {
 
 	try {
 		console.log("Starting long polling for events...");
-		
+
 		const response = await api.request("GET /events", {
 			query: {
 				timeout: "30", // Server-side timeout
@@ -220,7 +220,7 @@ async function longPollingExample() {
 		console.log("Connection:", connection);
 	} catch (error) {
 		clearTimeout(cancelTimeout);
-		
+
 		if (error instanceof Error && error.name === "AbortError") {
 			console.log("Long polling was cancelled");
 		} else {
@@ -265,7 +265,7 @@ async function typeInferenceExample() {
 
 	// Raw response access also available:
 	console.log("Raw response status:", response["~raw"].status); // number
-	
+
 	// Clean separation of data and metadata
 	const { data, status, headers, url, "~raw": rawResponse } = response;
 	console.log("Post data:", data); // { id: number, title: string, body: string, userId: number }

@@ -23,6 +23,7 @@ export interface EndpointSchema {
 	readonly query?: StandardSchemaV1;
 	readonly body?: StandardSchemaV1;
 	readonly response?: StandardSchemaV1;
+	readonly skipValidation?: boolean;
 }
 
 /**
@@ -75,6 +76,7 @@ export interface TypeFetcherConfig {
 	readonly headers?: Record<string, string>;
 	readonly timeout?: number;
 	readonly fetch?: typeof globalThis.fetch;
+	readonly skipValidation?: boolean;
 }
 
 /**

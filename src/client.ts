@@ -157,10 +157,13 @@ export class TypeFetcher<T extends EndpointMap = Record<never, never>> {
 			signal,
 		} = (options || {}) as RequestOptionsForEndpoint<T, K>;
 
+		// Determine if validation should be skipped (endpoint-level overrides global)
+		const skipValidation = endpoint.schema?.skipValidation ?? this.config.skipValidation ?? false;
+
 		// Validate and replace path parameters
 		let finalPath = pathTemplate;
 		if (params) {
-			if (endpoint.schema?.params) {
+			if (endpoint.schema?.params && !skipValidation) {
 				const validation = validateSync(endpoint.schema.params, params);
 				if (!validation.success) {
 					throw new ValidationError(validation.issues || [], "Path parameters validation failed");
@@ -174,7 +177,7 @@ export class TypeFetcher<T extends EndpointMap = Record<never, never>> {
 		// Validate query parameters
 		let validatedQuery: unknown;
 		if (query) {
-			if (endpoint.schema?.query) {
+			if (endpoint.schema?.query && !skipValidation) {
 				const validation = validateSync(endpoint.schema.query, query);
 				if (!validation.success) {
 					throw new ValidationError(validation.issues || [], "Query parameters validation failed");
@@ -188,7 +191,7 @@ export class TypeFetcher<T extends EndpointMap = Record<never, never>> {
 		// Validate request body
 		let validatedBody: unknown;
 		if (body) {
-			if (endpoint.schema?.body) {
+			if (endpoint.schema?.body && !skipValidation) {
 				const validation = validateSync(endpoint.schema.body, body);
 				if (!validation.success) {
 					throw new ValidationError(validation.issues || [], "Request body validation failed");
@@ -250,7 +253,7 @@ export class TypeFetcher<T extends EndpointMap = Record<never, never>> {
 
 		// Validate response data against schema
 		let finalData: unknown = responseData;
-		if (endpoint.schema?.response) {
+		if (endpoint.schema?.response && !skipValidation) {
 			const validation = validateSync(endpoint.schema.response, responseData);
 			if (!validation.success) {
 				throw new ValidationError(validation.issues || [], "Response validation failed");

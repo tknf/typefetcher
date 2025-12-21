@@ -544,4 +544,168 @@ describe("TypeFetcher with ~raw Response", () => {
 			})
 		);
 	});
+
+	test("should skip validation when skipValidation is set globally", async () => {
+		const responseData = { id: "not-a-number", name: "John" };
+		mockFetch.mockResolvedValueOnce(createMockResponse(responseData));
+
+		const clientWithSkip = new TypeFetcher({
+			baseURL: "https://api.example.com",
+			skipValidation: true,
+		});
+
+		const responseSchema = z.object({
+			id: z.number(),
+			name: z.string(),
+		});
+
+		const client = clientWithSkip.addEndpoint("GET", "/users/{id}", {
+			response: responseSchema,
+		});
+
+		// Should not throw even though response doesn't match schema
+		const result = await client.request("GET /users/{id}", {
+			params: { id: "1" },
+		});
+
+		expect(result.data).toMatchObject(responseData);
+	});
+
+	test("should skip validation when skipValidation is set per-endpoint", async () => {
+		const responseData = { id: "not-a-number", name: "John" };
+		mockFetch.mockResolvedValueOnce(createMockResponse(responseData));
+
+		const responseSchema = z.object({
+			id: z.number(),
+			name: z.string(),
+		});
+
+		const client = fetcher.addEndpoint("GET", "/users/{id}", {
+			response: responseSchema,
+			skipValidation: true,
+		});
+
+		// Should not throw even though response doesn't match schema
+		const result = await client.request("GET /users/{id}", {
+			params: { id: "1" },
+		});
+
+		expect(result.data).toMatchObject(responseData);
+	});
+
+	test("should skip request body validation when skipValidation is enabled", async () => {
+		const requestData = { name: 123 }; // Invalid: name should be string
+		const responseData = { id: 2, name: "123" };
+		mockFetch.mockResolvedValueOnce(createMockResponse(responseData));
+
+		const bodySchema = z.object({
+			name: z.string(),
+		});
+
+		const client = fetcher.addEndpoint("POST", "/users", {
+			body: bodySchema,
+			skipValidation: true,
+		});
+
+		// Should not throw even though body doesn't match schema
+		const result = await client.request("POST /users", {
+			// biome-ignore lint/suspicious/noExplicitAny: Test requires invalid input type
+			body: requestData as any,
+		});
+
+		expect(result.data).toMatchObject(responseData);
+	});
+
+	test("should skip path parameters validation when skipValidation is enabled", async () => {
+		const responseData = { id: 1, name: "John" };
+		mockFetch.mockResolvedValueOnce(createMockResponse(responseData));
+
+		const pathSchema = z.object({
+			id: z.string().min(10), // Requires at least 10 characters
+		});
+
+		const client = fetcher.addEndpoint("GET", "/users/{id}", {
+			params: pathSchema,
+			skipValidation: true,
+		});
+
+		// Should not throw even though id is too short
+		const result = await client.request("GET /users/{id}", {
+			params: { id: "1" }, // Only 1 character
+		});
+
+		expect(result.data).toMatchObject(responseData);
+	});
+
+	test("should skip query parameters validation when skipValidation is enabled", async () => {
+		const responseData = [{ id: 1, name: "John" }];
+		mockFetch.mockResolvedValueOnce(createMockResponse(responseData));
+
+		const querySchema = z.object({
+			page: z.string().min(2),
+		});
+
+		const client = fetcher.addEndpoint("GET", "/users", {
+			query: querySchema,
+			skipValidation: true,
+		});
+
+		// Should not throw even though page is too short
+		const result = await client.request("GET /users", {
+			query: { page: "1" }, // Only 1 character, schema requires 2
+		});
+
+		expect(result.data).toMatchObject(responseData);
+	});
+
+	test("endpoint-level skipValidation should override global setting", async () => {
+		const responseData = { id: "not-a-number", name: "John" };
+		mockFetch.mockResolvedValueOnce(createMockResponse(responseData));
+
+		// Global skipValidation is false
+		const clientWithoutSkip = new TypeFetcher({
+			baseURL: "https://api.example.com",
+			skipValidation: false,
+		});
+
+		const responseSchema = z.object({
+			id: z.number(),
+			name: z.string(),
+		});
+
+		// But endpoint-level is true
+		const client = clientWithoutSkip.addEndpoint("GET", "/users/{id}", {
+			response: responseSchema,
+			skipValidation: true,
+		});
+
+		// Should not throw because endpoint-level overrides global
+		const result = await client.request("GET /users/{id}", {
+			params: { id: "1" },
+		});
+
+		expect(result.data).toMatchObject(responseData);
+	});
+
+	test("should still validate when skipValidation is false", async () => {
+		const invalidResponse = { id: "not-a-number", name: "John" };
+		mockFetch.mockResolvedValueOnce(createMockResponse(invalidResponse));
+
+		const responseSchema = z.object({
+			id: z.number(),
+			name: z.string(),
+		});
+
+		const client = fetcher.addEndpoint("GET", "/users/{id}", {
+			response: responseSchema,
+			skipValidation: false,
+		});
+
+		// Should throw because validation is explicitly enabled
+		await expect(
+			client.request("GET /users/{id}", {
+				params: { id: "1" },
+			})
+		).rejects.toThrow("Response validation failed");
+	});
 });

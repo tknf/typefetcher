@@ -18,6 +18,7 @@
 - **🎯 Type-Safe**: Full TypeScript support with strict type inference
 - **📊 Standard Schema**: Native support for Zod, Valibot, and other Standard Schema compliant libraries
 - **🔍 Request/Response Validation**: Runtime validation with detailed error messages
+- **💡 Suggestions Only Mode**: Skip validation for performance while keeping type safety
 - **🏗️ Builder Pattern**: Intuitive API inspired by Hono and Octokit
 - **📋 Structured Response**: Rich response metadata (headers, status, URL) with `~raw` access
 - **⚡ Lightweight**: Zero dependencies (except peer dependencies)
@@ -262,6 +263,7 @@ interface TypeFetcherConfig {
   readonly headers?: Record<string, string>;
   readonly timeout?: number;
   readonly fetch?: typeof globalThis.fetch;  // Custom fetch implementation
+  readonly skipValidation?: boolean;         // Skip validation globally (schemas still provide type inference)
 }
 ```
 
@@ -285,10 +287,11 @@ Registers a new endpoint with optional schema validation.
 **Schema Object:**
 ```typescript
 interface EndpointSchema {
-  readonly params?: StandardSchemaV1;    // Path parameters
-  readonly query?: StandardSchemaV1;     // Query parameters  
-  readonly body?: StandardSchemaV1;      // Request body
-  readonly response?: StandardSchemaV1;  // Response validation
+  readonly params?: StandardSchemaV1;      // Path parameters
+  readonly query?: StandardSchemaV1;       // Query parameters  
+  readonly body?: StandardSchemaV1;        // Request body
+  readonly response?: StandardSchemaV1;    // Response validation
+  readonly skipValidation?: boolean;       // Skip validation for this endpoint (overrides global setting)
 }
 ```
 
@@ -484,6 +487,61 @@ const response = await api.request("GET /items/{id}", {
   // Becomes: id="ABC", date=Date object in the actual request
 });
 ```
+
+### Suggestions Only Mode (Skip Validation)
+
+For production environments where validation performance is critical or where API response changes shouldn't break the application, you can skip runtime validation while still maintaining TypeScript type safety:
+
+```typescript
+// Skip validation globally - schemas still provide type inference
+const client = new TypeFetcher({
+  baseURL: "https://api.example.com",
+  skipValidation: true  // All endpoints skip validation by default
+});
+
+const api = client.addEndpoint("GET", "/users/{id}", {
+  response: z.object({
+    id: z.number(),
+    name: z.string(),
+  })
+});
+
+// No runtime validation, but response.data is still typed as { id: number; name: string }
+const response = await api.request("GET /users/{id}", {
+  params: { id: "123" }
+});
+```
+
+You can also skip validation per-endpoint (overrides global setting):
+
+```typescript
+const client = new TypeFetcher({
+  baseURL: "https://api.example.com",
+  skipValidation: false  // Validation enabled by default
+});
+
+const api = client
+  .addEndpoint("GET", "/users", {
+    response: z.array(UserSchema),
+    skipValidation: true  // Skip validation for this endpoint only
+  })
+  .addEndpoint("POST", "/users", {
+    body: CreateUserSchema,
+    response: UserSchema
+    // This endpoint will validate because global default is false
+  });
+```
+
+**Benefits:**
+- **Performance**: Skip validation overhead in production
+- **Resilience**: Avoid errors when API responses change unexpectedly
+- **Type Safety**: TypeScript types are still inferred from schemas
+- **Flexibility**: Configure globally or per-endpoint
+
+**Use Cases:**
+- High-performance production APIs where validation is done server-side
+- Legacy APIs with evolving schemas
+- Development environments where you want types but not strict validation
 
 ## 🌟 Why TypeFetcher?
 

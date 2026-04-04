@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { z } from "zod";
+import z from "zod";
 import { TypeFetcher } from "./client";
 import { TypeFetcherError } from "./types";
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 // Helper to create mock response with clone method
 const createMockResponse = (

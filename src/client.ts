@@ -25,11 +25,6 @@ function getFetchImplementation(customFetch?: typeof globalThis.fetch): typeof g
 		return globalThis.fetch.bind(globalThis);
 	}
 
-	// Check for global.fetch (Node.js)
-	if (typeof global !== "undefined" && global.fetch) {
-		return global.fetch.bind(global);
-	}
-
 	// No fetch available
 	throw new Error(
 		"fetch is not available. Please provide a fetch implementation in the config, " +

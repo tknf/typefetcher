@@ -35,26 +35,24 @@ function getFetchImplementation(customFetch?: typeof globalThis.fetch): typeof g
 /**
  * Generate request options type from endpoint map
  */
-type RequestOptionsForEndpoint<
-	T extends EndpointMap,
-	K extends keyof T,
-> = T[K] extends EndpointDefinition<HttpMethod, string, infer Schema>
-	? Schema extends EndpointSchema
-		? RequestOptions<Schema>
+type RequestOptionsForEndpoint<T extends EndpointMap, K extends keyof T> =
+	T[K] extends EndpointDefinition<HttpMethod, string, infer Schema>
+		? Schema extends EndpointSchema
+			? RequestOptions<Schema>
+			: {
+					readonly params?: Record<string, string>;
+					readonly query?: Record<string, string>;
+					readonly body?: unknown;
+					readonly headers?: Record<string, string>;
+					readonly signal?: AbortSignal;
+				}
 		: {
 				readonly params?: Record<string, string>;
 				readonly query?: Record<string, string>;
 				readonly body?: unknown;
 				readonly headers?: Record<string, string>;
 				readonly signal?: AbortSignal;
-			}
-	: {
-			readonly params?: Record<string, string>;
-			readonly query?: Record<string, string>;
-			readonly body?: unknown;
-			readonly headers?: Record<string, string>;
-			readonly signal?: AbortSignal;
-		};
+			};
 
 /**
  * Structured response type with additional metadata
@@ -70,14 +68,12 @@ type StructuredResponse<T> = {
 /**
  * Generate response type from endpoint map with structured response
  */
-type ResponseForEndpoint<
-	T extends EndpointMap,
-	K extends keyof T,
-> = T[K] extends EndpointDefinition<HttpMethod, string, infer Schema>
-	? Schema extends EndpointSchema
-		? StructuredResponse<ResponseType<Schema>>
-		: StructuredResponse<unknown>
-	: StructuredResponse<unknown>;
+type ResponseForEndpoint<T extends EndpointMap, K extends keyof T> =
+	T[K] extends EndpointDefinition<HttpMethod, string, infer Schema>
+		? Schema extends EndpointSchema
+			? StructuredResponse<ResponseType<Schema>>
+			: StructuredResponse<unknown>
+		: StructuredResponse<unknown>;
 
 /**
  * TypeScript-first API client with Standard Schema support
